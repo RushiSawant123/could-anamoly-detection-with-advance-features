@@ -19,7 +19,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import pydeck as pdk
-from streamlit_autorefresh import st_autorefresh
+# streamlit_autorefresh replaced with smooth session_state-based polling
 
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -683,7 +683,9 @@ def validate_dataframe(df: pd.DataFrame) -> bool:
     return all(col in df.columns for col in required_columns)
 
 
+@st.cache_data(ttl=30, show_spinner=False)
 def check_api_health() -> Tuple[bool, str]:
+    """Cached API health check — result is reused for up to 30 s across re-runs."""
     health_url = f"{API_BASE_URL}/health"
     for attempt in range(1, API_RETRY_ATTEMPTS + 1):
         try:
@@ -719,7 +721,9 @@ def check_api_health() -> Tuple[bool, str]:
     return False, f"API health check failed after {API_RETRY_ATTEMPTS} attempts"
 
 
+@st.cache_data(ttl=30, show_spinner=False)
 def fetch_predictions_data() -> Optional[pd.DataFrame]:
+    """Cached predictions fetch — result is reused for up to 30 s across re-runs."""
     predictions_url = f"{API_BASE_URL}/predictions"
     for attempt in range(1, API_RETRY_ATTEMPTS + 1):
         try:
@@ -860,10 +864,10 @@ def render_page_header(df: Optional[pd.DataFrame] = None):
     with c1:
         st.markdown(f"""
         <div class="page-title-area">
-            <div class="page-title">☁️ Cloud Anomaly Detection</div>
-            <div class="page-subtitle">Real-time ML-powered infrastructure observability platform</div>
+            <div class="page-title">🛡️ Self Federated Cloud Anomaly Detection System</div>
+            <div class="page-subtitle">Collaborative ML-powered cloud-native security intelligence</div>
             <div class="page-meta">
-                <span class="live-dot">LIVE MONITORING</span>
+                <span class="live-dot">SECURE NODE ACTIVE</span>
                 <span class="badge badge-info">Model {version}</span>
                 <span style="font-size:11px; color:#94a3b8; font-family:'JetBrains Mono',monospace;">{now}</span>
             </div>
@@ -1215,6 +1219,8 @@ def render_recent_records(df: Optional[pd.DataFrame] = None):
                     st.caption(f"Detected at: {row['timestamp']}")
 
                 if st.button("Generate AI Incident Report", key=f"btn_ai_{rec_id}"):
+                    st.session_state.ai_report_active = True
+                    st.session_state.active_report_id = rec_id
                     with st.spinner("AI Analysis Engine parsing telemetry signature..."):
                         time.sleep(1.0)
                         report = generate_mock_llm_post_mortem(row)
@@ -1223,6 +1229,10 @@ def render_recent_records(df: Optional[pd.DataFrame] = None):
                             <pre style="white-space:pre-wrap; font-family:'JetBrains Mono',monospace; font-size:12px; color:#94a3b8; margin:0;">{report}</pre>
                         </div>
                         """, unsafe_allow_html=True)
+                
+                # If we are looking at this expander and it's expanded, and report was clicked,
+                # we are in "AI Insight" mode. 
+                # Note: Streamlit buttons are transient. We'll use the flag set above.
 
 
 # ============================================================================
@@ -1485,37 +1495,131 @@ def render_fallback_dashboard():
 # ============================================================================
 # Main
 # ============================================================================
+def _render_refresh_sidebar() -> Tuple[int, str]:
+    """Render the refresh-control and navigation panel in the sidebar.
+    Returns (interval_seconds, active_page)."""
+    with st.sidebar:
+        st.markdown("""
+        <div style="padding:1rem 0 0.5rem; font-family:'Inter',sans-serif;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase;
+                        letter-spacing:1.5px; color:#94a3b8; margin-bottom:0.75rem;">🧭 Navigation</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        active_page = st.radio(
+            "Go to",
+            ["⚡ Overview", "🌍 Threat Map", "⛓️ Cyber Jail", "📜 System Logs", "🚨 Alert History"],
+            label_visibility="collapsed",
+            key="nav_radio"
+        )
+
+        st.markdown("<hr style='border-color:#e2e8f0; margin:1rem 0;'>", unsafe_allow_html=True)
+
+        st.markdown("""
+        <div style="padding:0; font-family:'Inter',sans-serif;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase;
+                        letter-spacing:1.5px; color:#94a3b8; margin-bottom:0.75rem;">⚙️ Refresh Control</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        auto_refresh = st.toggle("Auto-refresh", value=True, key="auto_refresh_toggle")
+
+        # Determine if we should force pause the refresh based on user activity
+        force_pause = False
+        pause_reason = ""
+        
+        if active_page in ["🌍 Threat Map", "⛓️ Cyber Jail"]:
+            force_pause = True
+            pause_reason = f"Paused on {active_page.split()[-1]}"
+        elif st.session_state.get("ai_report_active"):
+            force_pause = True
+            pause_reason = "Paused for AI Analysis"
+
+        interval_seconds = 30
+        if auto_refresh and not force_pause:
+            interval_seconds = st.select_slider(
+                "Interval",
+                options=[10, 15, 30, 60, 120, 300],
+                value=30,
+                format_func=lambda s: f"{s}s" if s < 60 else f"{s//60}m",
+                key="refresh_interval_slider",
+            )
+        else:
+            if force_pause:
+                st.info(f"⏸️ {pause_reason}")
+            interval_seconds = 0
+
+        if st.button("🔄 Refresh Now", use_container_width=True, key="manual_refresh_btn"):
+            check_api_health.clear()
+            fetch_predictions_data.clear()
+            st.session_state.ai_report_active = False # Reset on manual refresh
+            st.rerun()
+
+        # Last-updated timestamp
+        last_updated = st.session_state.get("last_data_fetch_ts")
+        if last_updated:
+            elapsed = int(time.time() - last_updated)
+            st.markdown(
+                f"<div style='font-size:11px; color:#94a3b8; font-family:monospace; margin-top:0.5rem;'>"
+                f"Last updated: {elapsed}s ago</div>",
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("<hr style='border-color:#e2e8f0; margin:1rem 0;'>", unsafe_allow_html=True)
+
+    return interval_seconds, active_page
+
+
 def main():
     st.set_page_config(
-        page_title="Cloud Anomaly Detection",
-        page_icon="☁️",
+        page_title="Self Federated Cloud Anomaly Detection System",
+        page_icon="🛡️",
         layout="wide",
-        initial_sidebar_state="collapsed",
-        menu_items={"Get Help": None, "Report a bug": None, "About": "Cloud Anomaly Detection Platform v2.0"},
+        initial_sidebar_state="expanded",
+        menu_items={"Get Help": None, "Report a bug": None, "About": "Federated IDS Platform v2.0"},
     )
 
-    st_autorefresh(interval=REFRESH_INTERVAL, key="refresh")
+    if 'ai_report_active' not in st.session_state:
+        st.session_state.ai_report_active = False
 
-    # Fetch data once at the top
+    # ── Smooth polling with conditional pause ──
+    interval_seconds, active_page = _render_refresh_sidebar()
+
+    now_ts = time.time()
+    last_fetch_ts = st.session_state.get("last_data_fetch_ts", 0)
+    needs_refresh = (interval_seconds > 0) and ((now_ts - last_fetch_ts) >= interval_seconds)
+
+    if needs_refresh:
+        # Clear cache so the next call actually hits the API
+        check_api_health.clear()
+        fetch_predictions_data.clear()
+        st.session_state["last_data_fetch_ts"] = now_ts
+    elif "last_data_fetch_ts" not in st.session_state:
+        # Very first run — record the timestamp
+        st.session_state["last_data_fetch_ts"] = now_ts
+
+    # Schedule the next wake-up only when auto-refresh is on
+    if interval_seconds > 0:
+        remaining = max(1, interval_seconds - int(now_ts - st.session_state["last_data_fetch_ts"]))
+        # Use a hidden JS meta-refresh equivalent via session_state flag so
+        # we don't block the UI thread — we'll rely on Streamlit's own
+        # script runner being re-invoked after the page is idle.
+        # A lightweight approach: schedule via time.sleep only if very close.
+        if remaining <= 2:
+            time.sleep(remaining)
+            st.rerun()
+
+    # Fetch data (served from cache unless we just cleared it above)
     api_healthy, health_message = check_api_health()
     df = None
     if api_healthy:
-        with st.spinner("Syncing with inference engine..."):
-            df = fetch_predictions_data()
+        df = fetch_predictions_data()
 
     # Header
     render_page_header(df)
 
-    # Tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "⚡ Overview",
-        "🌍 Threat Map",
-        "⛓️ Cyber Jail",
-        "📜 System Logs",
-        "🚨 Alert History",
-    ])
-
-    with tab1:
+    # Page Routing
+    if active_page == "⚡ Overview":
         if not api_healthy:
             st.markdown(f"""
             <div class="alert-critical">
@@ -1540,16 +1644,28 @@ def main():
                 logger.info(f"Processing {len(df)} records from API")
 
                 # New anomaly toast alerts
+                # Initialize last_seen_id to 0 so first refresh surfaces recent anomalies.
+                # We track the max ID we've already alerted on in session_state.
                 if 'last_seen_id' not in st.session_state:
-                    st.session_state.last_seen_id = df['id'].max() if not df.empty else 0
-                else:
+                    st.session_state.last_seen_id = 0
+                    st.session_state.last_alert_df_hash = None
+
+                # Only search for new records when data actually changed (cache busted)
+                current_max_id = int(df['id'].max()) if not df.empty else 0
+                df_hash = current_max_id  # proxy for "did the data change"
+
+                if df_hash != st.session_state.get('last_alert_df_hash'):
+                    st.session_state.last_alert_df_hash = df_hash
                     new_records = df[df['id'] > st.session_state.last_seen_id]
                     if not new_records.empty:
-                        st.session_state.last_seen_id = df['id'].max()
-                        for _, row in new_records[new_records['prediction'] == 'Anomaly'].iterrows():
+                        anomaly_new = new_records[new_records['prediction'] == 'Anomaly']
+                        # Cap toasts at 5 to avoid flooding the UI
+                        for _, row in anomaly_new.tail(5).iterrows():
                             device = row.get('device_id', 'Unknown')
                             cause = row.get('cause', 'Unknown pattern')
-                            st.toast(f"Anomaly — {device}: {cause}", icon="🚨")
+                            st.toast(f"🚨 Anomaly — {device}: {cause}", icon="🚨")
+                    # Always advance the cursor so we don't re-alert
+                    st.session_state.last_seen_id = current_max_id
 
                 # Compute scores
                 total_records = len(df)
@@ -1607,19 +1723,19 @@ def main():
                 logger.error(f"Dashboard rendering error: {e}", exc_info=True)
                 st.markdown(f"""<div class="alert-critical"><b>Rendering error:</b> {str(e)}</div>""", unsafe_allow_html=True)
 
-    with tab2:
+    elif active_page == "🌍 Threat Map":
         if df is not None and not df.empty:
             render_geographical_threat_map(df)
         else:
             st.markdown("""<div class="alert-info">Connect to the API and start the simulator to populate the threat map.</div>""", unsafe_allow_html=True)
 
-    with tab3:
+    elif active_page == "⛓️ Cyber Jail":
         render_cyber_jail()
 
-    with tab4:
+    elif active_page == "📜 System Logs":
         render_system_logs()
 
-    with tab5:
+    elif active_page == "🚨 Alert History":
         render_alert_history(df)
 
 

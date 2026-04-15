@@ -59,13 +59,13 @@ REQUEST_RETRIES: int = 3
 RETRY_BACKOFF: float = 2.0
 
 # Anomaly injection
-ANOMALY_INJECTION_RATE: float = 0.0
+ANOMALY_INJECTION_RATE: float = 0.35  # 35% of requests will be anomalous
 
-# Normal metric ranges (min, max)
-CPU_USAGE_RANGE: Tuple[int, int] = (30, 100)
-MEMORY_USAGE_RANGE: Tuple[int, int] = (40, 100)
-DISK_IO_RANGE: Tuple[int, int] = (80, 500)
-NETWORK_TRAFFIC_RANGE: Tuple[int, int] = (200, 1200)
+# Normal metric ranges (min, max)  — kept lower so IF can distinguish from anomalous
+CPU_USAGE_RANGE: Tuple[int, int] = (10, 65)
+MEMORY_USAGE_RANGE: Tuple[int, int] = (20, 70)
+DISK_IO_RANGE: Tuple[int, int] = (20, 150)
+NETWORK_TRAFFIC_RANGE: Tuple[int, int] = (50, 400)
 
 # Anomalous metric ranges
 ANOMALY_CPU_RANGE: Tuple[int, int] = (85, 100)

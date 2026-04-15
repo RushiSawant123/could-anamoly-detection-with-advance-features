@@ -1,5 +1,5 @@
 """
-Cloud Anomaly Detection — Edge Client Anomaly Injector UI
+Self federated Cloud Anomaly Detection — Edge Client Anomaly Injector UI
 
 A premium Streamlit application that acts as an edge client.
 Allows targeting a remote central server and injecting simulated
