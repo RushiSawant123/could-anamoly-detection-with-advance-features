@@ -343,6 +343,10 @@ def get_db_session() -> Generator[Session, None, None]:
         raise RuntimeError(f"Database error: {str(e)}") from e
 
     except Exception as e:
+        # Re-raise HTTPException so FastAPI can return the correct status code (e.g., 403 Forbidden)
+        if "HTTPException" in type(e).__name__:
+            raise e
+            
         logger.error(f"Unexpected error in database session {id(session) if session else 'unknown'}: {e}", exc_info=True)
         if session and session_active:
             try:

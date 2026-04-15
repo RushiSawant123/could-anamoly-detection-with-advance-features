@@ -40,12 +40,17 @@ import time
 from typing import Dict, Any, Tuple, Optional
 
 import requests
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # ============================================================================
 # Configuration Section
 # ============================================================================
 
-API_URL: str = "http://127.0.0.1:8000/predict"
+API_URL: str = os.getenv("API_URL", "http://127.0.0.1:8000/predict")
 API_TIMEOUT: float = 10.0
 POLL_INTERVAL: float = 3.0
 

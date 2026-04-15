@@ -10,6 +10,15 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import json
+import os
+from typing import Dict, Any, Optional
+
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 import streamlit as st
 import simulator.anomaly_injector as injector
 
@@ -23,7 +32,8 @@ col_a, col_b = st.columns(2)
 with col_a:
     device_id = st.text_input("Local Device/Laptop ID", "Client-Laptop-1")
 with col_b:
-    target_url = st.text_input("Central Server API URL", "http://127.0.0.1:8000/predict")
+    default_url = os.getenv("API_URL", "http://127.0.0.1:8000/predict")
+    target_url = st.text_input("Central Server API URL", default_url)
 
 st.markdown("### Geographical Origin (Simulated)")
 region = st.selectbox("Select Threat Origin Region", ["North America (San Francisco)", "Europe (Frankfurt)", "Asia (Tokyo)", "South America (São Paulo)", "Australia (Sydney)", "Eastern Europe (Moscow)"])

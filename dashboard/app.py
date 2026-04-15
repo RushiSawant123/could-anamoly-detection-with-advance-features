@@ -10,6 +10,11 @@ from datetime import datetime
 from typing import Tuple, Optional
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 import plotly.graph_objects as go
 import streamlit as st
 import requests

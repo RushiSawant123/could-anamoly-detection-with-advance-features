@@ -48,12 +48,17 @@ import time
 from typing import Dict, Any, List, Optional, Tuple
 
 import requests
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # ============================================================================
 # Configuration Section
 # ============================================================================
 
-API_URL: str = "http://127.0.0.1:8000/predict"
+API_URL: str = os.getenv("API_URL", "http://127.0.0.1:8000/predict")
 API_TIMEOUT: float = 5.0
 NUM_REQUESTS: int = 1000000
 POST_BATCH_DELAY: float = 2.0

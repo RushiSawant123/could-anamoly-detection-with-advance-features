@@ -35,6 +35,11 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Generator, Dict, Any, Optional, Tuple
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if it exists
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session

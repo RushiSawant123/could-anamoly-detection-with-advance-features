@@ -11,12 +11,18 @@ Simulates specific real-world anomalies:
 import requests
 import time
 import logging
+import os
 from typing import Dict, Any, Optional
+
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-API_URL: str = "http://127.0.0.1:8000/predict"
+API_URL: str = os.getenv("API_URL", "http://127.0.0.1:8000/predict")
 
 def generate_memory_leak(device_id: str = "Unknown", latitude: float = 0.0, longitude: float = 0.0) -> Dict[str, Any]:
     return {

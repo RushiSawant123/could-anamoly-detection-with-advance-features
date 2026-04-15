@@ -44,28 +44,57 @@ Choose **ONE** of the following depending on your needs:
 
 ---
 
+## 🛡️ Cyber Jail (Zero-Trust Security)
+
+The platform features an advanced **Automated Quarantine System**. When the ML engine detects a high-severity malicious pattern (e.g., a DDoS signature or severe memory leak), it automatically "jails" the originating device.
+
+-   **Autonomous Blocking**: The Backend immediately rejects all subsequent requests from the quarantined `device_id`.
+-   **Security Status**: Blocked attempts are logged and flagged in the system logs as `ACCESS DENIED`.
+-   **Manual Override**: Use the `unquarantine.py` utility to release devices from custody.
+
+---
+
+## 🌩️ Cross-Network Support (ngrok)
+
+You can run the Backend on one machine and the Simulators on a completely different network (e.g., edge devices).
+
+1.  Expose the backend via ngrok: `ngrok http 8000`.
+2.  Configure the [**.env**](file:///c:/Users/Solgaleo/Downloads/cloud-anomaly-detection/cloud-anomaly-detection/.env) file on the client machine with the public ngrok URL.
+3.  See [**CROSS_NETWORK_GUIDE.md**](file:///c:/Users/Solgaleo/Downloads/cloud-anomaly-detection/cloud-anomaly-detection/CROSS_NETWORK_GUIDE.md) for full setup details.
+
+---
+
+## 🧪 Testing & Validation
+
+To ensure the platform is operating at peak efficiency, follow these testing protocols:
+
+1.  **Manual Injection**: Use the [Injector UI](http://localhost:8502) to trigger a "Memory Leak" and observe the "Cyber Jail" protocol in action.
+2.  **Unit Tests**: Run `pytest tests/` to validate core ML and API logic.
+3.  **End-to-End**: Run `python simulator/live_simulator.py` and verify charts move in the Dashboard.
+4.  **Security Reset**: Run `python unquarantine.py` to clear the environment after a security test.
+
+Refer to the [**TESTING_GUIDE.md**](file:///c:/Users/Solgaleo/Downloads/cloud-anomaly-detection/cloud-anomaly-detection/TESTING_GUIDE.md) for detailed test cases.
+
+---
+
 ## 🌟 Premium Features
 
 ### 🛡️ Automated "Self-Healing" Engine
-The system doesn't just watch—it acts. When an anomaly is detected, the backend autonomously triggers tactical protocols:
--   **Traffic Rerouting**: Instantly deploys load balancer scaling during DDoS floods.
--   **Thread Isolation**: Gracefully restarts services leaking memory.
--   **Resource Throttling**: Frees up compute for mission-critical tasks.
+The system doesn't just watch—it acts. When an anomaly is detected, the backend autonomously triggers tactical protocols such as traffic rerouting and thread isolation.
 
 ### 🤖 Generative AI Incident Post-Mortems
-Native "AI Analysis" button that parses complex telemetry into human-readable incident reports. These reports provide executive summaries, metric breakdowns, and recommended engineering action items.
+Native "AI Analysis" button that parses complex telemetry into human-readable incident reports.
 
 ### 🌍 3D Geographical Threat Mapping
-Powered by **Pydeck**, the dashboard features a glowing 3D globe that tracks the geographical origin of incoming attacks in real-time.
+Powered by **Pydeck**, the dashboard features a glowing 3D globe that tracks threat origins in real-time.
 
 ---
 
 ## 🛠️ Technology Stack
 
--   **Backend**: FastAPI, SQLAlchemy (SQLite), Pydantic
--   **Frontend**: Streamlit, Plotly, Pydeck (3D Mapping), Custom CSS (Synthwave)
+-   **Backend**: FastAPI, SQLAlchemy, Pydantic, python-dotenv
+-   **Frontend**: Streamlit, Plotly, Pydeck, Custom CSS
 -   **ML Engine**: Scikit-Learn (Isolation Forest), PyTorch (Log Autoencoder)
--   **Observability**: Python Logging, RESTful API Webhooks
 
 ---
 
@@ -78,7 +107,9 @@ Powered by **Pydeck**, the dashboard features a glowing 3D globe that tracks the
 ├── ml/                       # Hybrid Intelligence (Predict/Retrain)
 ├── database/                 # SQLAlchemy Models & Schemas
 ├── logs/                     # Network-wide System Logs
-└── cloud.db                  # Centralized Persistence Layer
+├── unquarantine.py           # Security Reset Utility
+├── .env.example              # Configuration Template
+└── CROSS_NETWORK_GUIDE.md    # ngrok Setup Instructions
 ```
 
 ---
